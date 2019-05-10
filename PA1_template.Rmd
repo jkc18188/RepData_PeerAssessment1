@@ -1,25 +1,129 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+title: "Reproducible Research Project 1"
+author: "Joshua Chu"
+date: "May 10, 2019"
+output: html_document
+---  
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,message = FALSE)
+```
 
-## Loading and preprocessing the data
+## Loading data and libraries.
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
 
+rawData <- read.csv("activity.csv")
+df0<-rawData
+df0$date<-as.Date(df0$date,format='%Y-%m-%d')
+```
 
+## Calculate daily steps and plot using a histogram.
+Here I use ggplot to produce the histogram. All NAs in the dataset are not included.
+```{r}
+df1<-aggregate(steps~date,na.rm=TRUE,data=df0,sum)
 
-## What is mean total number of steps taken per day?
+ggplot(df1,aes(x=date)) +           
+        geom_histogram(aes(y=steps),stat = 'identity',binwidth = 1,alpha=1) +
+        ggtitle('Total Steps Taken Daily (NAs omitted)') +
+        xlab("Date") +
+        ylab("Total Steps") +
+        theme(plot.title = element_text(hjust = 0.5)) +
+        theme(panel.background = element_rect('white')) +
+        theme(panel.border = element_rect(colour = "black", fill=NA, size=1))
+```
+
+## Calculate and report the mean and median of the total number of steps taken per day.
+A subset of the mean and median are reported.
+```{r}
+avg0<-aggregate(steps~date,na.rm=TRUE,data=df0,mean)
+head(avg0)
+med0<-aggregate(steps~date,na.rm=TRUE,data=df0,median)
+head(med0)
+```
 
 
 
 ## What is the average daily activity pattern?
+```{r}
+gpdf0<-group_by(df0,interval)
+
+spAvg<-summarise(gpdf0,Avg=mean(steps,na.rm = TRUE))
+
+ggplot(spAvg,aes(x=interval,y=Avg)) +
+        geom_line(colour='blue',size=.5) +
+        xlab("Interval") +
+        ylab("Avg Steps") +
+        theme(panel.background = element_rect('white')) +
+        theme(panel.border = element_rect(colour = "black", fill=NA, size=1))
+```
 
 
+## Inputing missing values.
+1.1 Determine the total number of NAs.
+```{r}
+summary(df0)
+```
 
-## Imputing missing values
 
+```{r echo=FALSE}
+df2<-df0
+```
+
+1.2 Use the step average to substitute for NAs. 
+```{r}
+df2$steps[is.na(df2$steps)]<-mean(df0$steps,na.rm = TRUE)
+```
+
+1.3 Create a new dataset and plot a histogram. 
+```{r}
+df3<-aggregate(steps~date,na.rm=TRUE,data=df2,sum)    
+
+ggplot(df3,aes(x=date)) +           
+        geom_histogram(aes(y=steps),stat = 'identity',binwidth = 1,alpha=1) +
+        ggtitle('Total Steps Taken Daily') +
+        xlab("Date") +
+        ylab("Total Steps") +
+        theme(plot.title = element_text(hjust = 0.5)) +
+        theme(panel.background = element_rect('white')) +
+        theme(panel.border = element_rect(colour = "black", fill=NA, size=1))
+```
+
+A subset of the mean and median are reported.
+```{r}
+avg1<-aggregate(steps~date,na.rm=TRUE,data=df2,mean)
+head(avg1)
+med1<-aggregate(steps~date,na.rm=TRUE,data=df2,median)
+head(med1)
+```
+
+## What is the impact of imputing missing data on the estimates of the total daily number of steps?
+Here I use the base plotting system to produce the histogram. 
+```{r}
+par(mfrow = c(1, 2))
+plot(df1, type = "h", lwd = 5,lend = "square", main = "NAs Present",xlab='Date',ylab='Total Steps')
+plot(df3, type = "h", lwd = 5, lend = "square", main = "No NAs",xlab='Date',ylab='Total Steps')
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend".
+```{r}
+df2$wkday<-factor(format(df3$date, "%A"))
+
+levels(df2$wkday)<-list(weekday = c("Monday","Tuesday","Wednesday", "Thursday","Friday"),
+                        weekend =c("Saturday", "Sunday"))
+```
+Plot using the base plotting system.
+```{r}
+par(mfrow = c(2, 1))
+
+with(df2[df2$wkday == "weekday",], plot(aggregate(steps ~ interval, FUN = mean),
+                                        type = "l", main = "Weekdays"))
+with(df2[df2$wkday == "weekend",], plot(aggregate(steps ~ interval, FUN = mean),
+                                        type = "l", main = "Weekends"))
+
+```
+
